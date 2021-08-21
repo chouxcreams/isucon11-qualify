@@ -1116,7 +1116,7 @@ func getTrend(c echo.Context) error {
 	conditions := []IsuCondition{}
 	err = db.Select(&conditions,
 		// "SELECT * FROM `isu_condition` ORDER BY jia_isu_uuid DESC, timestamp DESC"
-		"SELECT * FROM 'isu_condition` AS ic WHERE NOT EXISTS(SELECT 1 FROM isu_condition AS icsub WHERE ic.id = icsub.id AND ic.timestamp<icsub.timestamp)")
+		"SELECT * FROM `isu_condition` AS ic WHERE NOT EXISTS(SELECT 1 FROM `isu_condition` AS icsub WHERE ic.id = icsub.id AND ic.timestamp<icsub.timestamp)")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusHTTPVersionNotSupported)
