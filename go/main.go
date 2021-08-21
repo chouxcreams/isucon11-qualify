@@ -172,6 +172,7 @@ type JIAServiceRequest struct {
 }
 
 var conditionCache = []IsuCondition{}
+var JIAServiceURL string
 
 func getEnv(key string, defaultValue string) string {
 	val := os.Getenv(key)
@@ -299,6 +300,10 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 }
 
 func getJIAServiceURL(tx *sqlx.Tx) string {
+	if JIAServiceURL != "" {
+		return JIAServiceURL
+	}
+
 	var config Config
 	err := tx.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
 	if err != nil {
@@ -307,6 +312,7 @@ func getJIAServiceURL(tx *sqlx.Tx) string {
 		}
 		return defaultJIAServiceURL
 	}
+	JIAServiceURL = config.URL
 	return config.URL
 }
 
@@ -333,6 +339,8 @@ func postInitialize(c echo.Context) error {
 		"jia_service_url",
 		request.JIAServiceURL,
 	)
+
+	JIAServiceURL = request.JIAServiceURL
 
 	if err != nil {
 		c.Logger().Errorf("db error : %v", err)
