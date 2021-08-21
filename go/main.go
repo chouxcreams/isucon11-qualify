@@ -171,6 +171,8 @@ type JIAServiceRequest struct {
 	IsuUUID       string `json:"isu_uuid"`
 }
 
+var conditionCache = []IsuCondition{}
+
 func getEnv(key string, defaultValue string) string {
 	val := os.Getenv(key)
 	if val != "" {
@@ -1175,11 +1177,11 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "missing: jia_isu_uuid")
 	}
 
-	req := []PostIsuConditionRequest{}
-	err := c.Bind(&req)
+	conditions := []PostIsuConditionRequest{}
+	err := c.Bind(&conditions)
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad request body")
-	} else if len(req) == 0 {
+	} else if len(conditions) == 0 {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
@@ -1200,23 +1202,38 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
-	for _, cond := range req {
-		timestamp := time.Unix(cond.Timestamp, 0)
+	type BulkInsertCondition struct {
+		JIAIsuUUID string    `db:"jia_isu_uuid"`
+		Timestamp  time.Time `db:"timestamp"`
+		IsSitting  bool      `db:"is_sitting"`
+		Condition  string    `db:"condition"`
+		Message    string    `db:"message"`
+	}
 
+	var insertConditions []BulkInsertCondition
+
+	for _, cond := range conditions {
+		timestamp := time.Unix(cond.Timestamp, 0)
+		inCond := BulkInsertCondition{
+			JIAIsuUUID: jiaIsuUUID,
+			Timestamp: timestamp,
+			IsSitting: cond.IsSitting,
+			Condition: cond.Condition,
+			Message: cond.Message,
+		}
+		insertConditions = append(insertConditions, inCond)
 		if !isValidConditionFormat(cond.Condition) {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
+	}
 
-		_, err = tx.Exec(
-			"INSERT INTO `isu_condition`"+
-				"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
-				"	VALUES (?, ?, ?, ?, ?)",
-			jiaIsuUUID, timestamp, cond.IsSitting, cond.Condition, cond.Message)
-		if err != nil {
-			c.Logger().Errorf("db error: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
+	_, err = tx.NamedExec(
+		"INSERT INTO `isu_condition`"+
+			"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
+			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)", insertConditions)
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	err = tx.Commit()
