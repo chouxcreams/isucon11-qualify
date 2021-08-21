@@ -1115,7 +1115,7 @@ func getTrend(c echo.Context) error {
 
 	conditions := []IsuCondition{}
 	err = db.Select(&conditions,
-		"SELECT * FROM `isu_condition` ORDER BY jia_isu_uuid DESC, timestamp DESC")
+		"SELECT *, MAX(timestamp) FROM `isu_condition` GROUP BY jia_isu_uuid")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusHTTPVersionNotSupported)
