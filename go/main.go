@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"sort"
@@ -211,10 +210,6 @@ func init() {
 }
 
 func main() {
-	go func() {
-		http.ListenAndServe(":8080", nil)
-	}()
-
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
