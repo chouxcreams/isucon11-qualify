@@ -1249,6 +1249,8 @@ func postIsuCondition(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	conditionCache = []BulkInsertCondition{}
+
 	return c.NoContent(http.StatusAccepted)
 }
 
