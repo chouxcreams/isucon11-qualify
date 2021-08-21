@@ -1110,7 +1110,7 @@ func getTrend(c echo.Context) error {
 
 	conditions := []IsuCondition{}
 	err = db.Select(&conditions,
-		"SELECT * FROM `isu_condition` ORDER BY jia_isu_uuid DESC, timestamp DESC")
+		"SELECT id, jia_isu_uuid, timestamp, is_sitting, `condition`, message, created_at FROM isu_condition AS parent INNER JOIN (SELECT jia_isu_uuid AS child_uuid, MAX(TIMESTAMP) AS latest_timestamp FROM isu_condition GROUP BY jia_isu_uuid) AS child ON parent.jia_isu_uuid = child_uuid AND parent.timestamp = latest_timestamp")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusHTTPVersionNotSupported)
