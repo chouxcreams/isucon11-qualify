@@ -209,7 +209,7 @@ func init() {
 
 func main() {
 	go func() {
-		http.ListenAndServe("localhost:8080", nil)
+		http.ListenAndServe(":8080", nil)
 	}()
 
 	e := echo.New()
