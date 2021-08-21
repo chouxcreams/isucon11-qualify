@@ -1155,7 +1155,7 @@ func getTrend(c echo.Context) error {
 		case "critical":
 			res.Critical = append(res.Critical, &trendCondition)
 		}
-
+		resMap[character] = res
 	}
 
 	res := []TrendResponse{}
