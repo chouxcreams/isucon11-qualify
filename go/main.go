@@ -1112,7 +1112,7 @@ func getTrend(c echo.Context) error {
 
 	conditions := []IsuCondition{}
 	err = db.Select(&conditions,
-		"SELECT * FROM `isu_condition` ORDER BY jia_isu_uuid DESC timestamp DESC")
+		"SELECT * FROM `isu_condition` ORDER BY jia_isu_uuid DESC, timestamp DESC")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusHTTPVersionNotSupported)
