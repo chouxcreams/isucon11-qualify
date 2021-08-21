@@ -10,13 +10,13 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	_ "net/http/pprof"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-sql-driver/mysql"
@@ -171,16 +171,7 @@ type JIAServiceRequest struct {
 	IsuUUID       string `json:"isu_uuid"`
 }
 
-type BulkInsertCondition struct {
-	JIAIsuUUID string    `db:"jia_isu_uuid"`
-	Timestamp  time.Time `db:"timestamp"`
-	IsSitting  bool      `db:"is_sitting"`
-	Condition  string    `db:"condition"`
-	Message    string    `db:"message"`
-}
-
-var conditionCache = []BulkInsertCondition{}
-var postConditionCount = 0
+var conditionCache = []IsuCondition{}
 
 func getEnv(key string, defaultValue string) string {
 	val := os.Getenv(key)
@@ -1175,7 +1166,7 @@ func getTrend(c echo.Context) error {
 // ISUからのコンディションを受け取る
 func postIsuCondition(c echo.Context) error {
 	// TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
-	dropProbability := 0.0
+	dropProbability := 0.9
 	if rand.Float64() <= dropProbability {
 		c.Logger().Warnf("drop post isu condition request")
 		return c.NoContent(http.StatusAccepted)
@@ -1211,11 +1202,18 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
+	type BulkInsertCondition struct {
+		JIAIsuUUID string    `db:"jia_isu_uuid"`
+		Timestamp  time.Time `db:"timestamp"`
+		IsSitting  bool      `db:"is_sitting"`
+		Condition  string    `db:"condition"`
+		Message    string    `db:"message"`
+	}
+
+	var insertConditions []BulkInsertCondition
+
 	for _, cond := range conditions {
 		timestamp := time.Unix(cond.Timestamp, 0)
-		if !isValidConditionFormat(cond.Condition) {
-			return c.String(http.StatusBadRequest, "bad request body")
-		}
 		inCond := BulkInsertCondition{
 			JIAIsuUUID: jiaIsuUUID,
 			Timestamp: timestamp,
@@ -1223,21 +1221,16 @@ func postIsuCondition(c echo.Context) error {
 			Condition: cond.Condition,
 			Message: cond.Message,
 		}
-		conditionCache = append(conditionCache, inCond)
-	}
-
-	if postConditionCount < 8 {
-		// キャッシュだけする
-		postConditionCount++
-		return c.NoContent(http.StatusAccepted)
-	} else {
-		postConditionCount = 0
+		insertConditions = append(insertConditions, inCond)
+		if !isValidConditionFormat(cond.Condition) {
+			return c.String(http.StatusBadRequest, "bad request body")
+		}
 	}
 
 	_, err = tx.NamedExec(
 		"INSERT INTO `isu_condition`"+
 			"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
-			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)", conditionCache)
+			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)", insertConditions)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
