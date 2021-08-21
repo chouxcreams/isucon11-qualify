@@ -1103,10 +1103,8 @@ func getTrend(c echo.Context) error {
 	}
 
 	isuMap := map[string]Isu{}
-	isuCharaMap := map[string]string{}
 
 	for _, isu := range isuList {
-		isuCharaMap[isu.JIAIsuUUID] = isu.Character
 		isuMap[isu.JIAIsuUUID] = isu
 	}
 
@@ -1138,7 +1136,7 @@ func getTrend(c echo.Context) error {
 			continue
 		}
 		currentIsuUuid = condition.JIAIsuUUID
-		character := isuCharaMap[currentIsuUuid]
+		character := isuMap[currentIsuUuid].Character
 		conditionLevel, err := calculateConditionLevel(condition.Condition)
 		if err != nil {
 			c.Logger().Error(err)
