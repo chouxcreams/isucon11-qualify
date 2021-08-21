@@ -172,6 +172,7 @@ type JIAServiceRequest struct {
 }
 
 var conditionCache = []IsuCondition{}
+var JIAServiceURL string
 
 func getEnv(key string, defaultValue string) string {
 	val := os.Getenv(key)
@@ -190,8 +191,6 @@ func NewMySQLConnectionEnv() *MySQLConnectionEnv {
 		Password: getEnv("MYSQL_PASS", "isucon"),
 	}
 }
-
-var JIAServiceURL string
 
 func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=true&loc=Asia%%2FTokyo", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
@@ -301,16 +300,20 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 }
 
 func getJIAServiceURL(tx *sqlx.Tx) string {
-	//var config Config
-	//err := tx.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
-	//if err != nil {
-	//	if !errors.Is(err, sql.ErrNoRows) {
-	//		log.Print(err)
-	//	}
-	//	return defaultJIAServiceURL
-	//}
-	//return config.URL
-	return JIAServiceURL
+	if JIAServiceURL != "" {
+		return JIAServiceURL
+	}
+
+	var config Config
+	err := tx.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Print(err)
+		}
+		return defaultJIAServiceURL
+	}
+	JIAServiceURL = config.URL
+	return config.URL
 }
 
 // POST /initialize
@@ -336,7 +339,9 @@ func postInitialize(c echo.Context) error {
 		"jia_service_url",
 		request.JIAServiceURL,
 	)
+
 	JIAServiceURL = request.JIAServiceURL
+
 	if err != nil {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1231,10 +1236,10 @@ func postIsuCondition(c echo.Context) error {
 		timestamp := time.Unix(cond.Timestamp, 0)
 		inCond := BulkInsertCondition{
 			JIAIsuUUID: jiaIsuUUID,
-			Timestamp: timestamp,
-			IsSitting: cond.IsSitting,
-			Condition: cond.Condition,
-			Message: cond.Message,
+			Timestamp:  timestamp,
+			IsSitting:  cond.IsSitting,
+			Condition:  cond.Condition,
+			Message:    cond.Message,
 		}
 		insertConditions = append(insertConditions, inCond)
 		if !isValidConditionFormat(cond.Condition) {
