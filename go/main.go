@@ -1092,14 +1092,14 @@ func getTrend(c echo.Context) error {
 	err := db.Select(&characterIsuList, "SELECT `character` FROM `isu` GROUP BY `character`")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInsufficientStorage)
 	}
 
 	isuList := []Isu{}
 	err = db.Select(&isuList, "SELECT * FROM `isu`")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusGatewayTimeout)
 	}
 
 	isuMap := map[string]Isu{}
@@ -1115,7 +1115,7 @@ func getTrend(c echo.Context) error {
 		"SELECT * FROM `isu_condition` ORDER BY jia_isu_uuid DESC timestamp DESC")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusHTTPVersionNotSupported)
 	}
 	// conditionsはisuのuuid順タイムスタンプ順にならんでいる
 	resMap := map[string]TrendResponse{}
@@ -1142,7 +1142,7 @@ func getTrend(c echo.Context) error {
 		conditionLevel, err := calculateConditionLevel(condition.Condition)
 		if err != nil {
 			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
+			return c.NoContent(http.StatusNetworkAuthenticationRequired)
 		}
 		trendCondition := TrendCondition{
 			ID:        isuMap[condition.JIAIsuUUID].ID,
